@@ -223,6 +223,11 @@ impl FromWorldAndParams for Img {
     }
 }
 
+#[derive(Resource, Default)]
+struct ImageCache {
+    cache: HashMap<String, Handle<Image>>,
+}
+
 fn load_img(
     asset_server: Res<AssetServer>,
     mut elements: Query<(Entity, &mut Img), Changed<Img>>,
@@ -231,11 +236,15 @@ fn load_img(
     assets: Res<Assets<Image>>,
     mut events: EventWriter<AssetEvent<Image>>,
     mut signals: EventWriter<ImgEvent>,
+    mut cache: Local<ImageCache>,
 ) {
     for (entity, mut img) in elements.iter_mut() {
         let handle = match &img.src {
             AssetSource::Path(s) if s.is_empty() => Handle::default(),
-            AssetSource::Path(s) => asset_server.load(s),
+            AssetSource::Path(s) => {
+                let handle = cache.cache.entry(s.clone()).or_insert(asset_server.load(s));
+                handle.clone()
+            }
             AssetSource::Handle(h) => h.clone(),
         };
         if handle != img.handle {

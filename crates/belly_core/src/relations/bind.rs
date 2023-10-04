@@ -52,14 +52,16 @@ pub fn component_to_component_system<
     S: BindableSource,
     T: BindableTarget,
 >(
+    mut commands: Commands,
     mut binds: ParamSet<(
-        Query<(&ReadComponent<R, S>, &R), Changed<R>>,
+        Query<(Entity, &ReadComponent<R, S>, &R), Or<(Changed<R>, With<NewBinding>)>>,
         Query<(&WriteComponent<W, S, T>, &mut W, &mut Change<W>)>,
     )>,
     mut changes: Local<ActiveChanges<S>>,
 ) {
     changes.clear();
-    for (readers, component) in binds.p0().iter() {
+    for (re, readers, component) in binds.p0().iter() {
+        commands.entity(re).remove::<NewBinding>();
         for descriptor in readers.iter() {
             let value = (descriptor.reader)(component).clone();
             changes.add_change(descriptor.id, value);
@@ -152,6 +154,9 @@ impl<W: Component> Change<W> {
         Change(PhantomData)
     }
 }
+
+#[derive(Component)]
+pub struct NewBinding;
 
 pub struct ReadDescriptor<R, S: BindableSource> {
     id: BindId,
@@ -442,6 +447,7 @@ impl<R: Component, W: Component, S: BindableSource, T: BindableTarget>
         } else {
             source_entity.insert(ReadComponent(vec![read_descriptor]));
         }
+        source_entity.insert(NewBinding);
         register_component_writer(world, id, self.to);
     }
 }
@@ -660,9 +666,9 @@ macro_rules! bind {
             Ok(())
         }
     };
-    (@transform $arg:pat_param | $filter:expr ) => {
-        |s, t| {
-            let tr = |$arg| $filter;
+    (@transform ($arg:pat_param, $type:ty); $filter:expr ) => {
+        |s, mut t| {
+            let tr = |$arg: $type| $filter;
             let val = tr(s);
             if val != *t {
                 *t = val;

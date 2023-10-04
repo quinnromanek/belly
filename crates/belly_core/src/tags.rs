@@ -34,3 +34,7 @@ pub fn active() -> Tag {
 pub fn pressed() -> Tag {
     tag!("pressed")
 }
+
+pub fn disabled() -> Tag {
+    tag!("disabled")
+}

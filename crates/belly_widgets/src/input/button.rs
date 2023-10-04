@@ -71,6 +71,8 @@ fn buttongroup(ctx: &mut WidgetContext) {
 #[signal(release:BtnEvent => button_released)]
 /// if button is pressed or not
 #[param(pressed:bool => Btn:pressed)]
+/// if button is disabled or not
+#[param(disabled:bool => Btn:disabled)]
 /// <!-- @inline BtnMode -->
 #[param(mode:BtnMode => Btn:mode)]
 /// Specifies the `<button>` value passed to parent `<buttongroup>`
@@ -127,6 +129,23 @@ ess_define! {
     button:pressed > span > .button-foreground {
         background-color: #bfbfbf;
     }
+
+    button:disabled > span > .button-foreground {
+        margin: 0px;
+    }
+    button:disabled > button-background {
+        background-color: black;
+        margin: 0px;
+    }
+
+    button:disabled:active > span > .button-foreground {
+        margin: 0px;
+    }
+    button:disabled:active > button-background {
+        margin: 0px;
+    }
+
+
     .button-shadow {
         background-color: #4f4f4fb8;
         top: 1px;
@@ -403,6 +422,7 @@ impl TryFrom<&str> for BtnModeRepeat {
 #[derive(Component, Default)]
 pub struct Btn {
     pub pressed: bool,
+    pub disabled: bool,
     pub mode: BtnMode,
     pub value: String,
 }
@@ -540,11 +560,13 @@ fn handle_input_system(
 
             match (&btn.mode, &event.data) {
                 (BtnMode::Instant, PointerInputData::Down { presses: _ }) => {
-                    if !btn.pressed {
-                        btn.pressed = true;
+                    if !btn.disabled {
+                        if !btn.pressed {
+                            btn.pressed = true;
+                        }
+                        instant_pressed.insert(*entity);
+                        button_events.send(BtnEvent::Pressed(*entity));
                     }
-                    instant_pressed.insert(*entity);
-                    button_events.send(BtnEvent::Pressed(*entity));
                 }
                 (BtnMode::Instant, PointerInputData::Pressed { presses: _ }) => {
                     if btn.pressed {
@@ -553,24 +575,30 @@ fn handle_input_system(
                     button_events.send(BtnEvent::Released(*entity));
                 }
                 (BtnMode::Press, PointerInputData::Pressed { presses: _ }) => {
-                    button_events.send(BtnEvent::Pressed(*entity));
-                    button_events.send(BtnEvent::Released(*entity));
+                    if !btn.disabled {
+                        button_events.send(BtnEvent::Pressed(*entity));
+                        button_events.send(BtnEvent::Released(*entity));
+                    }
                 }
                 (BtnMode::Repeat(repeat), PointerInputData::Down { presses: _ }) => {
-                    repeat_state.start(*entity, repeat.clone());
-                    button_events.send(BtnEvent::Pressed(*entity));
+                    if !btn.disabled {
+                        repeat_state.start(*entity, repeat.clone());
+                        button_events.send(BtnEvent::Pressed(*entity));
+                    }
                 }
                 (BtnMode::Repeat(_), PointerInputData::Pressed { presses: _ }) => {
                     button_events.send(BtnEvent::Released(*entity));
                 }
 
                 (BtnMode::Toggle, PointerInputData::Pressed { presses: _ }) => {
-                    if btn.pressed {
-                        btn.pressed = false;
-                        button_events.send(BtnEvent::Released(*entity));
-                    } else {
-                        btn.pressed = true;
-                        button_events.send(BtnEvent::Pressed(*entity));
+                    if !btn.disabled {
+                        if btn.pressed {
+                            btn.pressed = false;
+                            button_events.send(BtnEvent::Released(*entity));
+                        } else {
+                            btn.pressed = true;
+                            button_events.send(BtnEvent::Pressed(*entity));
+                        }
                     }
                 }
                 (BtnMode::Group(group), PointerInputData::Pressed { presses: _ }) => {
@@ -626,6 +654,10 @@ fn handle_states_system(
             // BtnMode::Instant => elements.set_state(entity, tags::pressed(), false),
             BtnMode::Press => elements.set_state(entity, tags::pressed(), false),
             _ => elements.set_state(entity, tags::pressed(), btn.pressed),
+        }
+        elements.set_state(entity, tags::disabled(), btn.disabled);
+        if btn.disabled {
+            elements.set_state(entity, tags::active(), false);
         }
         if let BtnMode::Group(group) = &btn.mode {
             if let Some(state) = groups.get_mut(group) {
@@ -706,10 +738,16 @@ fn process_btngroups_system(
         }
         if let Some(state) = found_state {
             if let Some(btnid) = default_pressed {
+                let old_selected = state.selected.clone();
                 state.selected = btnid;
                 if let Some(value) = pressed_value {
                     if state.value != value {
                         state.value = value;
+                    }
+                }
+                if let Ok(mut btn) = buttons.get_mut(old_selected) {
+                    if btn.pressed {
+                        btn.pressed = false;
                     }
                 }
                 if let Ok(mut btn) = buttons.get_mut(btnid) {
