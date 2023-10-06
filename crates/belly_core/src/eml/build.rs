@@ -546,12 +546,18 @@ impl Eml {
 
     pub fn render_to(self, entity: Entity) -> impl FnOnce(&mut World) {
         move |world: &mut World| {
+            if world.get_entity(entity).is_none() {
+                return;
+            }
             (self.builder)(world, Some(entity));
         }
     }
 
     pub fn add_to(self, parent: Entity) -> impl Command {
         move |world: &mut World| {
+            if world.get_entity(parent).is_none() {
+                return;
+            }
             let child = (self.builder)(world, None);
             world.entity_mut(parent).push_children(&[child]);
         }
