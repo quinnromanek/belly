@@ -26,19 +26,13 @@
 
 use belly::build::*;
 use belly::widgets::input::button::ButtonWidget;
-use bevy::ecs::entity::Entities;
 use bevy::prelude::*;
-
-use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(BellyPlugin)
-        .add_plugins(LogDiagnosticsPlugin::default())
-        .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_systems(Startup, setup)
-        .add_systems(Update, debug_entities)
         .run();
 }
 
@@ -165,8 +159,12 @@ fn Animal(ctx: &mut WidgetContext, ch: &mut AnimalState) {
 ///
 #[widget]
 fn AnimalEditor(ctx: &mut WidgetContext) {
-    let Some(animal) = ctx.required_param::<Entity>("animal") else { return };
-    let Some(data) = ctx.required_param::<AnimalState>("data") else { return };
+    let Some(animal) = ctx.required_param::<Entity>("animal") else {
+        return;
+    };
+    let Some(data) = ctx.required_param::<AnimalState>("data") else {
+        return;
+    };
     // The eml! macro expands into somethins like `move |world| { ... }`,
     // so you have to create 'static values to pass them to eml! macro.
     let imgsrc = data.avatar.image().clone();
@@ -294,12 +292,4 @@ impl From<AnimalState> for Variant {
     fn from(value: AnimalState) -> Self {
         Variant::boxed(value)
     }
-}
-
-fn debug_entities(mut next: Local<f32>, time: Res<Time>, entities: &Entities) {
-    if *next > time.elapsed_seconds() {
-        return;
-    }
-    *next = time.elapsed_seconds() + 1.0;
-    info!("Num entities: {}", entities.len());
 }

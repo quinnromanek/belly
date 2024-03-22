@@ -29,7 +29,7 @@ fn write_component_changes<W: Component, S: BindableSource, T: BindableTarget>(
 ) {
     for (target, sources) in changes.iter() {
         let Ok((writers, mut component, mut component_change)) = writes.get_mut(*target) else {
-            continue
+            continue;
         };
         for (id, source) in sources {
             for write_descriptor in writers.iter().filter(|w| &w.id == id) {
@@ -38,7 +38,7 @@ fn write_component_changes<W: Component, S: BindableSource, T: BindableTarget>(
                     error!("Error transforming {:?}: {}", id, e.0);
                 } else if prop_descriptor.changed() {
                     // TODO: protect infinity circular loops by tracking property changes
-                    info!("[bind] just writed {:?}", id);
+                    // info!("[bind] just writed {:?}", id);
                     component_change.set_changed();
                 }
             }

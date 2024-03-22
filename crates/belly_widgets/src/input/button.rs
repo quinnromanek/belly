@@ -531,7 +531,7 @@ fn handle_input_system(
         button_events.send(BtnEvent::Pressed(entity));
     }
 
-    for event in pointer_events.iter() {
+    for event in pointer_events.read() {
         for entity in event.entities.iter() {
             if repeat_state.is_active() {
                 if event.up() {
@@ -767,7 +767,7 @@ fn report_btngroup_changes(
 ) {
     for entity in groups.iter() {
         let Some(state) = states.get_mut(&BtnModeGroup::Entity(entity)) else {
-            continue
+            continue;
         };
         if state.value != state.reported_value {
             events.send(ValueChanged::new(
