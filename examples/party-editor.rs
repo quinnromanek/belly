@@ -86,10 +86,12 @@ const COLORS: &[&'static str] = &[
 ];
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    let id = commands.spawn(Camera2dBundle::default()).id();
+    let target_camera = TargetCamera(id);
+
     commands.add(StyleSheet::load("party-editor/styles.ess"));
     commands.add(eml! {
-        <body>
+        <body with=target_camera>
             <span id="animals" c:column>
                 <span c:row>"Choose & Edit your fighters!"</span>
                 <for row in=0..4>
@@ -185,7 +187,7 @@ fn AnimalEditor(ctx: &mut WidgetContext) {
             </span>
             <span c:column c:content>
                 <span>"Name:"</span>
-                // 
+                //
                 <textinput value=name bind:value=to!(animal, AnimalState:name)/>
                 <span c:separator/>
                 <span>"Avatar:"</span>
