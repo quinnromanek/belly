@@ -1,6 +1,6 @@
 use crate::{element::Element, element::Elements, tags};
 use bevy::{
-    ecs::query::{QueryData, WorldQuery},
+    ecs::query::QueryData,
     prelude::*,
     render::camera::RenderTarget,
     ui::{FocusPolicy, UiStack},
@@ -204,7 +204,7 @@ pub fn pointer_input_system(
     let cursor_position = target_cameras
         .iter()
         .map(|tc| camera.get(tc.0).unwrap())
-        .filter_map(|(camera, _)| {
+        .filter_map(|camera| {
             if let RenderTarget::Window(window_ref) = camera.target {
                 Some(window_ref)
             } else {

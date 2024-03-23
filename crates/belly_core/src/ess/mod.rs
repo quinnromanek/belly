@@ -286,6 +286,7 @@ fn process_styles_system(
                     }
                 }
             }
+            AssetEvent::Unused { id: _ } => styles_changed = true,
         }
     }
     if styles_changed {

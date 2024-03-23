@@ -1,8 +1,7 @@
-use belly_core::{build::*, relations::connect::EventSource};
+use belly_core::build::*;
 use belly_macro::*;
 
 use bevy::{
-    asset::Asset,
     prelude::*,
     // utils::{HashMap, HashSet},
 };
@@ -294,7 +293,7 @@ fn update_img_size(
 ) {
     for event in asset_events.read() {
         match event {
-            AssetEvent::Removed { id } => {
+            AssetEvent::Removed { id } | AssetEvent::Unused { id } => {
                 if let Some(handle) = asset_server.get_id_handle(*id) {
                     let Some(entities) = registry.remove(&handle) else {
                         continue;

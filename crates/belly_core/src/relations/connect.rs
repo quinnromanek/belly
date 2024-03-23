@@ -1,9 +1,7 @@
 use crate::{element::Elements, relations::RelationsSystems};
 use bevy::{
-    asset::Asset,
     ecs::{
-        event::Event,
-        query::{QueryItem, WorldQuery},
+        query::{QueryData, QueryItem},
         system::{Command, EntityCommands},
     },
     prelude::*,
@@ -65,7 +63,7 @@ impl<E: Event> EventFilter<E> {
             filter: self,
         }
     }
-    pub fn handle<Q: WorldQuery, F: 'static + Fn(&mut EventContext<E>, &mut QueryItem<Q>)>(
+    pub fn handle<Q: QueryData, F: 'static + Fn(&mut EventContext<E>, &mut QueryItem<Q>)>(
         self,
         (_, target, handler): (PhantomData<Q>, Option<Entity>, F),
     ) -> Connection<Q, E> {
@@ -181,8 +179,8 @@ impl<'a, 'w, 's, E: Event> DerefMut for EventContext<'a, 'w, 's, E> {
     }
 }
 
-pub struct Handler<Q: WorldQuery, E: Event>(Box<dyn Fn(&mut EventContext<E>, &mut QueryItem<Q>)>);
-impl<Q: 'static + WorldQuery, E: Event> Handler<Q, E> {
+pub struct Handler<Q: QueryData, E: Event>(Box<dyn Fn(&mut EventContext<E>, &mut QueryItem<Q>)>);
+impl<Q: 'static + QueryData, E: Event> Handler<Q, E> {
     pub fn run(&self, ctx: &mut EventContext<E>, args: &mut QueryItem<Q>) {
         self.0(ctx, args)
     }
@@ -201,17 +199,17 @@ impl<Q: 'static + WorldQuery, E: Event> Handler<Q, E> {
     }
 }
 
-unsafe impl<Q: WorldQuery, E: Event> Send for Handler<Q, E> {}
-unsafe impl<Q: WorldQuery, E: Event> Sync for Handler<Q, E> {}
+unsafe impl<Q: QueryData, E: Event> Send for Handler<Q, E> {}
+unsafe impl<Q: QueryData, E: Event> Sync for Handler<Q, E> {}
 
-pub struct Connection<Q: WorldQuery, E: Event> {
+pub struct Connection<Q: QueryData, E: Event> {
     pub(crate) source: Option<Entity>,
     pub(crate) target: Option<Entity>,
     pub(crate) handler: Handler<Q, E>,
     pub(crate) filter: EventFilter<E>,
 }
 
-impl<Q: 'static + WorldQuery, E: Event> Connection<Q, E> {
+impl<Q: 'static + QueryData, E: Event> Connection<Q, E> {
     // pub fn handles(&self, event: &E) -> bool {
     //     (self.filter)(event)
     // }
@@ -230,22 +228,22 @@ impl<Q: 'static + WorldQuery, E: Event> Connection<Q, E> {
     }
 }
 
-impl<Q: 'static + WorldQuery, E: Event> Command for Connection<Q, E> {
+impl<Q: 'static + QueryData, E: Event> Command for Connection<Q, E> {
     fn apply(self, world: &mut World) {
         self.write(world);
     }
 }
 
 #[derive(Resource, Deref, DerefMut)]
-pub struct Connections<Q: WorldQuery, E: Event>(HashMap<EventFilter<E>, EntityConnections<Q, E>>);
+pub struct Connections<Q: QueryData, E: Event>(HashMap<EventFilter<E>, EntityConnections<Q, E>>);
 
-impl<Q: WorldQuery, E: Event> Default for Connections<Q, E> {
+impl<Q: QueryData, E: Event> Default for Connections<Q, E> {
     fn default() -> Self {
         Connections(HashMap::new())
     }
 }
 
-impl<Q: 'static + WorldQuery, E: Event> Connections<Q, E> {
+impl<Q: 'static + QueryData, E: Event> Connections<Q, E> {
     pub fn process<F: FnMut(&Vec<(Option<Entity>, Handler<Q, E>)>)>(
         &self,
         event: &E,
@@ -334,19 +332,19 @@ impl<Q: 'static + WorldQuery, E: Event> Connections<Q, E> {
     }
 }
 
-pub struct EntityConnections<Q: WorldQuery, E: Event> {
+pub struct EntityConnections<Q: QueryData, E: Event> {
     pub(crate) sources: HashMap<Option<Entity>, Vec<(Option<Entity>, Handler<Q, E>)>>,
     pub(crate) targets: HashMap<Option<Entity>, Vec<Option<Entity>>>,
 }
 
-impl<Q: WorldQuery, E: Event> Deref for EntityConnections<Q, E> {
+impl<Q: QueryData, E: Event> Deref for EntityConnections<Q, E> {
     type Target = HashMap<Option<Entity>, Vec<(Option<Entity>, Handler<Q, E>)>>;
     fn deref(&self) -> &Self::Target {
         &self.sources
     }
 }
 
-impl<Q: WorldQuery, E: Event> Default for EntityConnections<Q, E> {
+impl<Q: QueryData, E: Event> Default for EntityConnections<Q, E> {
     fn default() -> Self {
         EntityConnections {
             sources: Default::default(),
@@ -387,7 +385,7 @@ impl<E: Event> ConnectEvent<E> {
             handler: Handler(Box::new(move |ctx, _| func(ctx))),
         }
     }
-    pub fn to_handler<Q: WorldQuery, F: 'static + Fn(&mut EventContext<E>, &mut QueryItem<Q>)>(
+    pub fn to_handler<Q: QueryData, F: 'static + Fn(&mut EventContext<E>, &mut QueryItem<Q>)>(
         self,
         (_, target, handler): (PhantomData<Q>, Option<Entity>, F),
     ) -> Connection<Q, E> {
@@ -410,7 +408,7 @@ impl<E: Event> ConnectEntityTo<E> {
             handler: Handler(Box::new(move |ctx, _| func(ctx))),
         }
     }
-    pub fn handle<Q: WorldQuery, F: 'static + Fn(&mut EventContext<E>, &mut QueryItem<Q>)>(
+    pub fn handle<Q: QueryData, F: 'static + Fn(&mut EventContext<E>, &mut QueryItem<Q>)>(
         self,
         (_, target, handler): (PhantomData<Q>, Option<Entity>, F),
     ) -> Connection<Q, E> {
@@ -469,7 +467,7 @@ impl<'w, 's, 'a, E: Event> ConnectCommands<'w, 's, 'a, WorldEvent<E>> {
         })
     }
     pub fn to_handler<
-        Q: 'static + WorldQuery,
+        Q: 'static + QueryData,
         F: 'static + Fn(&mut EventContext<E>, &mut QueryItem<Q>),
     >(
         self,
@@ -509,7 +507,7 @@ impl<'w, 's, 'a, E: Event> ConnectCommands<'w, 's, 'a, (Entity, EventFilter<E>)>
     }
 
     pub fn handle<
-        Q: 'static + WorldQuery,
+        Q: 'static + QueryData,
         F: 'static + Fn(&mut EventContext<E>, &mut QueryItem<Q>),
     >(
         self,
