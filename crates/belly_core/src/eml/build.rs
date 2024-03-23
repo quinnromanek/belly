@@ -102,7 +102,7 @@ pub struct WidgetContext<'w, 's> {
 }
 
 impl<'w, 's> WidgetContext<'w, 's> {
-    pub fn this<'a>(&'a mut self) -> EntityCommands<'w, 's, 'a> {
+    pub fn this<'a>(&'a mut self) -> EntityCommands<'a> {
         self.commands.entity(self.data.entity)
     }
     pub fn load<T: Asset>(&self, path: String) -> Handle<T> {
@@ -125,7 +125,7 @@ impl<'w, 's> WidgetContext<'w, 's> {
         self.commands.add(command)
     }
 
-    pub fn insert<'a>(&'a mut self, bundle: impl Bundle) -> EntityCommands<'w, 's, 'a> {
+    pub fn insert<'a>(&'a mut self, bundle: impl Bundle) -> EntityCommands<'a> {
         let mut commands = self.commands.entity(self.data.entity);
         commands.insert(bundle);
         commands

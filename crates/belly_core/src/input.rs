@@ -1,6 +1,6 @@
 use crate::{element::Element, element::Elements, tags};
 use bevy::{
-    ecs::query::WorldQuery,
+    ecs::query::{QueryData, WorldQuery},
     prelude::*,
     render::camera::RenderTarget,
     ui::{FocusPolicy, UiStack},
@@ -169,8 +169,8 @@ pub struct State {
 }
 
 /// Main query for [`ui_focus_system`]
-#[derive(WorldQuery)]
-#[world_query(mutable)]
+#[derive(QueryData)]
+#[query_data(mutable)]
 pub struct NodeQuery {
     entity: Entity,
     node: &'static Node,
@@ -185,13 +185,14 @@ pub struct NodeQuery {
 // it emit PointerEvent with associated entities and data.
 pub fn pointer_input_system(
     mut state: Local<State>,
-    camera: Query<(&Camera, Option<&UiCameraConfig>)>,
+    camera: Query<&Camera>,
     primary_window: Query<&Window, With<PrimaryWindow>>,
     windows: Query<&Window, Without<PrimaryWindow>>,
-    mouse_button_input: Res<Input<MouseButton>>,
+    mouse_button_input: Res<ButtonInput<MouseButton>>,
     touches_input: Res<Touches>,
     ui_stack: Res<UiStack>,
     time: Res<Time>,
+    target_cameras: Query<&TargetCamera>,
     mut node_query: Query<NodeQuery>,
     mut events: EventWriter<PointerInput>,
 ) {
@@ -200,12 +201,9 @@ pub fn pointer_input_system(
     let down =
         mouse_button_input.just_pressed(MouseButton::Left) || touches_input.any_just_pressed();
 
-    let is_ui_disabled =
-        |camera_ui| matches!(camera_ui, Some(&UiCameraConfig { show_ui: false, .. }));
-
-    let cursor_position = camera
+    let cursor_position = target_cameras
         .iter()
-        .filter(|(_, camera_ui)| !is_ui_disabled(*camera_ui))
+        .map(|tc| camera.get(tc.0).unwrap())
         .filter_map(|(camera, _)| {
             if let RenderTarget::Window(window_ref) = camera.target {
                 Some(window_ref)
@@ -532,7 +530,7 @@ pub fn active_system(
 }
 
 pub fn tab_focus_system(
-    keyboard: Res<Input<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     elements: Query<(Entity, &Element), With<Interaction>>,
     mut requests: EventWriter<RequestFocus>,
 ) {

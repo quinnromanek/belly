@@ -140,7 +140,7 @@ impl<'a, 'w, 's, E: Event> EventContext<'a, 'w, 's, E> {
     pub fn event(&self) -> &'a E {
         self.source_event
     }
-    pub fn entity<'x>(&'x mut self, entity: Entity) -> EntityCommands<'w, 's, 'x> {
+    pub fn entity<'x>(&'x mut self, entity: Entity) -> EntityCommands<'x> {
         self.elements.commands.entity(entity)
     }
     pub fn load<T: Asset>(&self, path: String) -> Handle<T> {

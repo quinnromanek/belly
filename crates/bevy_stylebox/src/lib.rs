@@ -398,6 +398,7 @@ pub fn extract_stylebox(
     mut extracted_uinodes: ResMut<ExtractedUiNodes>,
     ui_stack: Extract<Res<UiStack>>,
     images: Extract<Res<Assets<Image>>>,
+    camera: Query<&TargetCamera>,
     uinode_query: Extract<
         Query<(
             &Node,
@@ -406,11 +407,13 @@ pub fn extract_stylebox(
             &StyleboxSlices,
             &InheritedVisibility,
             Option<&CalculatedClip>,
+            Option<&Parent>,
         )>,
     >,
 ) {
     for (stack_index, entity) in ui_stack.uinodes.iter().enumerate() {
-        let Ok((uinode, transform, stylebox, slices, visibility, clip)) = uinode_query.get(*entity)
+        let Ok((uinode, transform, stylebox, slices, visibility, clip, parent)) =
+            uinode_query.get(*entity)
         else {
             continue;
         };
@@ -427,6 +430,21 @@ pub fn extract_stylebox(
         if uinode.size() == Vec2::ZERO {
             continue;
         }
+
+        let camera_entity = (|| {
+            let mut node = entity.clone();
+            loop {
+                if let Ok(tc) = camera.get(node) {
+                    return Some(tc.0);
+                }
+                node = match parent {
+                    Some(p) => p.get(),
+                    None => break,
+                };
+            }
+            None
+        })()
+        .unwrap();
 
         // image.as
 
@@ -447,6 +465,7 @@ pub fn extract_stylebox(
                     clip: clip.map(|clip| clip.clip),
                     stack_index: stack_index as u32,
                     flip_x: false,
+                    camera_entity,
                     flip_y: false,
                 },
             );
